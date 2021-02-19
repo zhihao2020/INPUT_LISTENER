@@ -1,21 +1,21 @@
+"""
+Author:xuzhihao
+2021-02-12:移动、点击已经完成；滚轮和键盘没有搞好
+2021-02-19:大体已经完成，后续将会是细节上的改进
+"""
 from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtCore import QMutex,QWaitCondition
-from PyQt5.QtWidgets import QMainWindow,QApplication,QWidget,QLabel
+from PyQt5.QtWidgets import QMainWindow,QApplication, QMessageBox,QWidget,QLabel
 from PyQt5.QtCore import Qt,QThread,pyqtSignal
 from PyQt5 import QtCore,QtGui
-import logging
-import pyautogui
 import pynput.mouse
+from pynput.mouse import Button
 import pynput.keyboard
-import sys,os
-import webbrowser
-import requests
-import json
-import zipfile
-import shutil
+import sys
+import random
 import time
-import psutil
-import subprocess
+import ast
+
+from PyQt5 import QtCore, QtGui, QtWidgets
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -61,9 +61,6 @@ class Ui_MainWindow(object):
         MainWindow.setStatusBar(self.statusbar)
         self.action = QtWidgets.QAction(MainWindow)
         self.action.setObjectName("action")
-        self.action_2 = QtWidgets.QAction(MainWindow)
-        self.action_2.setObjectName("action_2")
-        self.menu.addAction(self.action_2)
         self.menu.addAction(self.action)
         self.menubar.addAction(self.menu.menuAction())
 
@@ -72,24 +69,24 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "输入记录器@zhihao"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "输入记录器 V0.2"))
         self.pushButton_3.setText(_translate("MainWindow", "执行"))
-        self.pushButton_4.setText(_translate("MainWindow", "恢复"))
+        self.pushButton_4.setText(_translate("MainWindow", "继续"))
         self.pushButton.setText(_translate("MainWindow", "开始记录"))
         self.pushButton_2.setText(_translate("MainWindow", "停止记录"))
+        self.pushButton_2.setShortcut(_translate("MainWindow", "F4"))
         self.menu.setTitle(_translate("MainWindow", "关于"))
         self.action.setText(_translate("MainWindow", "软件简介"))
-        self.action_2.setText(_translate("MainWindow", "关于作者"))
 
 class reload_mainWin(QMainWindow, Ui_MainWindow):
     
     def __init__(self):
         super(reload_mainWin, self).__init__()
         self.setupUi(self)
-        self.action_2.triggered.connect(self.about_me)
         self.action.triggered.connect(self.about_it)
         self.pushButton.clicked.connect(self.start_record)
         self.pushButton_2.clicked.connect(self.end_record)
+       
         self.pushButton_4.clicked.connect(self.continue_start)
         self.pushButton_3.clicked.connect(self.play_it)
 
@@ -100,42 +97,89 @@ class reload_mainWin(QMainWindow, Ui_MainWindow):
         #隐藏按钮
         self.pushButton_3.hide()
         self.pushButton_4.hide()
+        self.pushButton_2.hide()
+
+        self.mouse= pynput.mouse.Controller()
        
-    def about_me(self):
-        print("介绍作者")
-        webbrowser.open_new_tab('https://xuzhihao.top/about/')
-    
     def about_it(self):
-        #展示一个新窗口 用于介绍软件信息
-        pass
+        QMessageBox.information(self,"介绍","此软件用于记录 鼠标事件和键盘事件\nF4为停止记录的快捷方式\n\n\n此程序为开源程序 绝无后门进程\n地址在我的github仓库zhihao2020\INPUT_RECORD",QMessageBox.Yes)
 
     def play_it(self):
-        #mouse_click mouse_move Scrolled 
-        #keyboard_press keyboard_release
+        """
+        鼠标移动 mouse_move,(x,y)qw
+        鼠标点击 mouse_click,press or release|x+y|左键or右键
+        鼠标滚轮 Scrolled,x|y
+        """
+        self.showMinimized()
         with open('dataini.io',"r") as fd:
-            for line in fd.readable:
-                flag = line.split(',')[0]
-                context = line.split(',')[1]
+            for line in fd.readlines():
+                time.sleep(random.uniform(0,0.2))
+                flag = line.split('=')[0]
+                context = line.split('=')[1]
                 if flag == "mouse_move":
-                    pass
+                    print(context)
+                    self.mouse_controller(context)
                 elif flag == "mouse_click":
-                    pass
+                    print(context)
+                    self.mouse_Click(context)
+                elif flag=="Scrolled":
+                    print(context)
+                    self.mouse_scroll(context)
                 elif flag == "keyboard":
-                    pass
+                    print(context)
+                    self.keyboard_controller(context)
                 
     def add_list_content(self,content):
         self.listWidget.addItem(content)
 
-    def mouse_controller(self):
-        mouse= pynput.mouse.Controller()
-        mouse.set(x,y)
-        mouse.press()
-        mouse.release()
-        mouse.scroll(0,2)
+    def mouse_controller(self,content):
         
-    def keyboard_controller(self):
-        keyboard = pynput.keyboard.Controller()
+        x = int(content.split("+")[0])
+        y = int(content.split("+")[1])
+        self.mouse.position = (x,y)
+
+    def mouse_Click(self,context):
+        #鼠标点击 mouse_click,Pressed or Released|(x,y)|左键or右键
+        first = context.split("|")[0]
+        #second_location = context.split("|")[1]
+        third = context.split("|")[2]
+        if "Pressed" in  first:
+            if "Button.left" in third:
+                self.mouse.press(Button.left)
+            elif  "Button.right" in third:
+                print("按下右键")
+                self.mouse.press(Button.right)
+        elif  "Released" in first :
+            if  "Button.left" in third:
+                self.mouse.release(Button.left)
+                
+            elif "Button.right" in third :
+                print("释放右键")
+                self.mouse.release(Button.right)
+            time.sleep(random.uniform(0,1))
+        
+    def mouse_scroll(self,content):
+        # 鼠标滚轮 Scrolled,x|y
+        mouse= pynput.mouse.Controller()
+        x = content.split("|")[0]
+        y = content.split("|")[1]
+        mouse.scroll(int(x),int(y))
     
+    def keyboard_controller(self,content):
+        flag = content.split("|")[1].strip()
+        try:
+            button = ast.literal_eval(content.split("|")[0].strip())
+        except:
+            button = content.split("|")[0].strip()
+        try:
+            keyboard = pynput.keyboard.Controller()
+            if "press" in flag:
+                keyboard.press(button)
+            elif "release" in flag:
+                keyboard.release(button)
+        except:
+            pass
+
     def continue_start(self):
         print("恢复开始")
         self.keyboard_thread.start()
@@ -145,9 +189,10 @@ class reload_mainWin(QMainWindow, Ui_MainWindow):
         #开始记录 鼠标位置、是否点击
         #判断 鼠标是否 拖动
         #判断键盘是否输入
+        self.pushButton.setEnabled(False)
+        self.pushButton_2.show()
         self.pushButton_3.hide()
         self.pushButton_4.hide()
-        print("开始")
         self.listWidget.clear()
         file = open('dataini.io',"w")
         file.close()
@@ -156,12 +201,19 @@ class reload_mainWin(QMainWindow, Ui_MainWindow):
 
     def end_record(self):
         #停止记录
+        self.pushButton.setEnabled(True)
         self.keyboard_thread.cancel()
         self.mouse_thread.cancel()
         self.pushButton_3.show()
         self.pushButton_4.show()
-
+      
 class mouse_Thread(QThread,Ui_MainWindow):
+    """
+    io文件存储 “标识符,内容”
+    鼠标移动 mouse_move,(x,y)
+    鼠标点击 mouse_click,press or release|(x,y)|左键or右键
+    鼠标滚轮 Scrolled,x|y23
+    """
     mouse_signal = pyqtSignal(bool)
     mouse_information = pyqtSignal(str)
     
@@ -170,13 +222,13 @@ class mouse_Thread(QThread,Ui_MainWindow):
        
     def on_move(self,x,y):
         with open('dataini.io',"a") as fd:
-            fd.write('mouse_move,'+str((x,y))+'\n')
+            fd.write('mouse_move='+ str(x) +"+" + str(y)+'\n')
         self.mouse_information.emit('鼠标移动到：{0}'.format((x,y)))
 
     def on_click(self,x,y,button,pressed):
         with open('dataini.io',"a") as fd:
             #存入格式为 按下去,右键或左键,(x,y)
-            fd.write('mouse_click,'+'%s %s %s'%('Pressed'if pressed else 'Released',
+            fd.write('mouse_click='+'%s|%s|%s'%('Pressed'if pressed else 'Released',
                             (x,y),button)+'\n')
            
         self.mouse_information.emit("鼠标点击 {0}".format('Pressed'if pressed else 'Released'))
@@ -184,26 +236,26 @@ class mouse_Thread(QThread,Ui_MainWindow):
     
     def on_scroll(self,x,y,dx,dy):
         with open('dataini.io',"a") as fd:
-            fd.write('Scrolled,{0} {1}'.format(dx,dy)+'\n')
+            fd.write('Scrolled={0}|{1}'.format(dx,dy)+'\n')
         self.mouse_information.emit("鼠标x轴滚动 %s"%dx)
         self.mouse_information.emit("鼠标y轴滚动 %s"%dy)
-    
-    def pause(self):
-        print("线程暂停")
         
     def cancel(self):
-        print("线程取消")
+        #用于线程暂停
         self.listener.stop()
-    def run(self):
-        
+   
+    def run(self):     
         self.listener =  pynput.mouse.Listener(
             on_move = self.on_move,
             on_click = self.on_click,
             on_scroll=self.on_scroll)     
-        
         self.listener.start()
 
 class keyboard_Thread(QThread,Ui_MainWindow):
+    """
+    键盘 keyboard,按钮
+   
+    """
     keyboard_signal = pyqtSignal(bool)
     keyboard_information = pyqtSignal(str)
     def __init__(self):
@@ -211,120 +263,22 @@ class keyboard_Thread(QThread,Ui_MainWindow):
        
     def on_press(self,key):
         with open('dataini.io',"a") as fd:
-            fd.write('keyboard_press,'+str(key)+'\n')
+            fd.write('keyboard='+str(key)+"|press"+'\n')
         self.keyboard_information.emit("按下 %s"%str(key))
         print('{0} pressed'.format(key))
 
     def on_release(self,key):
         with open('dataini.io',"a") as fd:
-            fd.write('keyboard_release,'+str(key)+'\n')
+            fd.write('keyboard='+str(key)+"|release"+'\n')
         self.keyboard_information.emit('释放,{0}'.format(key))
 
-    def pause(self):
-        print("线程暂停")
-        self.isPause = True
-
     def cancel(self):
-        print("线程取消")
+        #用于线程暂停
         self.listener.stop()
 
     def run(self):
         self.listener = pynput.keyboard.Listener(on_press = self.on_press,on_release=self.on_release) 
-        
         self.listener.start()
-
-class update_Thread(QThread,Ui_MainWindow):
-    update_Signal = pyqtSignal(bool)
-
-    def __init__(self):
-        super(update_Thread,self).__init__()
-   
-    def check_latest(self):
-    # 确定当前软件是否为最新版
-        params = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.129 Safari/537.36",
-            "Host": "api.github.com"}
-        try:
-            response = requests.get("https://api.github.com/repos/zhihao2020/INPUT_LISTENER/releases/latest", params=params)
-            if response.status_code != 200:
-                raise Exception("网络异常")
-            temp = json.loads(response.text)
-            self.latest_tag = temp["tag_name"]
-            print(self.latest_tag)
-            if not os.path.exists("softID.io"):
-                file = open("softID.io","w")
-                file.close()
-            with open("softID.io",'r') as f:
-                previous_tag = f.readline()
-            if self.latest_tag != previous_tag:
-                download_url = temp["assets"][0]['browser_download_url']
-                file_size = temp['assets'][0]['size']
-                return download_url,file_size
-            else:
-                pass
-                #self.New_signal.emit(3)
-        except requests.exceptions.ConnectionError:
-            print("请求被拒绝")
-        except Exception as e:
-            print("158行，%s"%e)
-            #self.Error_signal.emit(2)
-
-    def kill_process(self):
-        for proc in psutil.process_iter():
-            if proc.name()=='Input_Record.exe':
-                proc.kill()            
-                    
-    def download(self,download_url,file_size):
-        print("downloading ....")
-        temp_file = os.path.join(self.download_path,'update.zip')
-        params = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.129 Safari/537.36"}
-        with open(temp_file,'wb') as self.fileobj:
-            f = requests.get(download_url,stream=True,params=params)
-            offset = 0
-            for chunk in f.iter_content(chunk_size=1024):
-                if not chunk:
-                    break
-                self.fileobj.seek(offset)
-                self.fileobj.write(chunk)
-                offset = offset+len(chunk)
-                proess = offset/int(file_size) * 100
-                self.trigger.emit(int(proess))
-
-    def unzip(self):
-        self.kill_process()
-        current_path = os.path.dirname(os.path.abspath(__file__))
-        update_file_path = os.path.join(self.download_path, 'update.zip')
-        with zipfile.ZipFile(update_file_path) as fd:
-            for n in fd.namelist():
-                try:
-                    os.remove(n)
-                except:
-                    try:
-                        shutil.rmtree(n)
-                    except:
-                        print(n)
-        shutil.unpack_archive(
-            filename=update_file_path,
-            extract_dir=current_path
-        )
-        os.remove(update_file_path)
-
-    def run(self):
-        # 确定当前软件是否为最新版
-        try:
-            download_url, file_size = self.check_latest()
-            print(download_url)
-            self.download(download_url, file_size)
-            self.Button_signal.emit(True)
-            self.unzip()
-            with open("softID.io", 'w') as f:
-                f.write(self.latest_tag)
-           
-        except Exception as e:
-            print(e)
-
-
 
 class Information(QWidget):
     def __init__(self):

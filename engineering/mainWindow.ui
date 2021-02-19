@@ -17,7 +17,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>输入记录器@zhihao</string>
+   <string>输入记录器</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -37,6 +37,13 @@
         </item>
         <item>
          <widget class="QPushButton" name="pushButton_4">
+          <property name="text">
+           <string>继续</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="recover">
           <property name="text">
            <string>恢复</string>
           </property>
@@ -67,6 +74,9 @@
           <property name="text">
            <string>停止记录</string>
           </property>
+          <property name="shortcut">
+           <string>F4</string>
+          </property>
          </widget>
         </item>
        </layout>
@@ -88,7 +98,6 @@
     <property name="title">
      <string>关于</string>
     </property>
-    <addaction name="action_2"/>
     <addaction name="action"/>
    </widget>
    <addaction name="menu"/>
@@ -97,11 +106,6 @@
   <action name="action">
    <property name="text">
     <string>软件简介</string>
-   </property>
-  </action>
-  <action name="action_2">
-   <property name="text">
-    <string>关于作者</string>
    </property>
   </action>
  </widget>

@@ -1,0 +1,7 @@
+temp.*
+*.pyc
+*.txt
+ProgramLog.log
+*.xls
+*.csv
+*.io
